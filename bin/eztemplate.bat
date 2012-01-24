@@ -1,0 +1,1 @@
+java EzTemplate %1 %2
