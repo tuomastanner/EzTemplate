@@ -1,29 +1,11 @@
 import java.io.*;
 import java.text.ParseException;
 
-/** - EzTemplate, by Tuomas Tanner
- *  - The poor man's content management system -
+/** EzTemplate by Tuomas Tanner
+ *  - The poor man's content management system
  *  
- *  - Usage -
- *  Create a template html file with the following tag somewhere at the start:
- *  <!--eztemplate_templatefilename.html-->
- *  
- *  Create editable areas by adding a start tag:
- *  <!--ezstart_areaname-->
- *  End your editable area with the an end tag:
- *  <!--ezend_areaname-->
- *  
- *  To create pages based on the template, just copy and rename the template file.
- *  You can then edit the contents inside the editable areas freely.
- *  If you change your template design, just run this tool on the file(s) you've created
- *  and the changes will be magically applied with the editable areas left intact.
- *  
- *  You can freely muck around with the non-editable areas in destination file, they will be overwritten on update.
- *  Don't worry: If there are any problems in the update process, an error is shown and the original file is left untouched.
- *  
- *  Tip: You can also include path information in the template filename tag, if you want to keep your template
- *  files in a different directory than your other site.
- *  
+ *  See README for usage instructions.
+ * 
  *  This is released with an Apache style license: Feel free to distribute or modify this program. 
  *  Just give me credit if you do so.
  */
@@ -37,7 +19,7 @@ public class EzTemplate {
     public static void main(String[] args) {
         if (args.length < 1) {
             System.out.println("Usage: java EzTemplate <file or dir to process> [file ending filter]");
-            System.out.println("E.g: java EzTemplate websitedir .html OR java EzTemplate . .html");
+            System.out.println("E.g: java EzTemplate websitedir .html OR java EzTemplate . .html OR java EzTemplate index.html");
             return;
         }
         
@@ -67,33 +49,39 @@ public class EzTemplate {
             }
             return;
         }
-        //is file
-        String filename = curFile.getName();
-        if (!filename.contains(filter)) {
-            return;
-        }
-        String curDir = curFile.getAbsolutePath();
-        System.out.println("Processing file: " + curDir);
-        //get only directory
-        curDir = curDir.substring(0, curDir.lastIndexOf(File.separator)+1);
+        //process current file
         
-        
-        String target = readFile(curFile);
-        int namePos = target.indexOf(TMPL);
-        if (namePos == -1) { //doesn't contain template reference
+        if (!curFile.getName().contains(filter)) {
             ++stats[1];
             return;
         }
-        String templateName = target.substring(namePos + TMPL.length(), target.indexOf("-->", namePos));
-        if (templateName.contains(filename)) { //this is the template file itself - skip it
+        String filePath = curFile.getCanonicalPath();
+        String target = readFile(curFile);
+        int namePos = target.indexOf(TMPL);
+        if (namePos == -1) { //doesn't contain template reference, skip
+            ++stats[1];
             return;
         }
-
-
-        //load template file if not already loaded
-        if (!curTmpl[0].equals(templateName)) { 
-            curTmpl[1] = readFile(new File(curDir + templateName));
-            curTmpl[0] = templateName;
+        String curDir = filePath.substring(0, filePath.lastIndexOf(File.separator)+1);
+        String templateName = target.substring(namePos + TMPL.length(), target.indexOf("-->", namePos));
+        File templateFile = new File(curDir + templateName);
+        if (!templateFile.isFile()) {
+            System.err.println("Error: Template file \"" + templateName + "\" not found for " + filePath);
+            ++stats[1];
+            return;
+        }
+        String templatePath = templateFile.getCanonicalPath();
+        if (templatePath.equals(filePath)) { //this is the template file itself - skip it
+            ++stats[1];
+            return;
+        }
+        
+        System.out.println("Processing file: " + filePath);
+        
+        //load template file to memory if not already loaded
+        if (!curTmpl[0].equals(templatePath)) { 
+            curTmpl[1] = readFile(templateFile);
+            curTmpl[0] = templatePath;
         }
 
         //apply template and write file
@@ -110,10 +98,17 @@ public class EzTemplate {
     
     private static String applyTemplate(String template, String target) throws Exception {
         StringBuilder output = new StringBuilder();
-        int tgStart;
-        int tgEnd = 0;
-        int tmplStart = 0;
-        int tmplEnd = 0;
+        
+        //process template tag, keeps path to template specified in target file
+        int tgStart = target.indexOf(TMPL);
+        int tmplStart = template.indexOf(TMPL);
+        int tgEnd = target.indexOf("-->", tgStart) + 3;
+        int tmplEnd = template.indexOf("-->", tmplStart) + 3;
+        
+        output.append(template.substring(0, tmplStart)); //print start from template
+        output.append(target.substring(tgStart, tgEnd)); //print template reference from target
+        
+        //process all content areas
         while ((tgStart = target.indexOf(START, tgEnd)) != -1) {
             String areaName = target.substring(tgStart + STARTL, target.indexOf("-->", tgStart + 13));
             
@@ -140,14 +135,14 @@ public class EzTemplate {
         return output.toString();
     }
     
-    public static String readFile(File file) throws IOException {
+    private static String readFile(File file) throws IOException {
         BufferedReader fread = new BufferedReader(new FileReader(file));
         char[] cbuf = new char[(int)file.length()];
         fread.read(cbuf, 0, (int)file.length());
         return new String(cbuf);
     }
     
-    public static void writeFile(File file, String contents) throws IOException {
+    private static void writeFile(File file, String contents) throws IOException {
         BufferedWriter writer = new BufferedWriter(new FileWriter(file));
         writer.write(contents);
         writer.close();
