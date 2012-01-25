@@ -1,1 +1,1 @@
-java EzTemplate %1 %2
+java EzTemplate -cp .;c:\tools %1 %2
