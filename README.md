@@ -3,12 +3,18 @@ EzTemplate by Tuomas Tanner
 
 ## Usage ##
 Create a template html file with the following tag somewhere at the start:
+```
 <!--eztemplate_templatefilename.html-->
+```
 
 Create editable areas by adding a start tag:
+```
 <!--ezstart_areaname-->
+```
 End your editable area with the end tag:
+```
 <!--ezend_areaname-->
+```
 
 To create pages based on the template, just copy and rename the template file. You can then edit the contents inside the editable areas freely.
 
